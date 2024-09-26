@@ -1,0 +1,231 @@
+import pygame
+import random
+import time
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions
+screen_width = 1000
+screen_height = 800
+screen = pygame.display.set_mode((screen_width, screen_height))
+
+# Colors
+white = (255, 255, 255)
+black = (0, 0, 0)
+red = (255, 0, 0)
+blue = (0, 0, 255)
+green = (0, 255, 0)
+
+# Paddle dimensions
+paddle_width = 20
+paddle_height = 120
+player1_x = 10
+player1_y = screen_height // 2 - paddle_height // 2
+player2_x = screen_width - 30
+player2_y = screen_height // 2 - paddle_height // 2
+
+# Ball dimensions
+ball_size = 20
+ball_x = screen_width // 2
+ball_y = screen_height // 2
+ball_dx = 5
+ball_dy = 5
+
+# Box dimensions
+box_size = 20
+blue_boxes = []
+red_boxes = []
+green_boxes = []
+
+# Score
+player1_score = 0
+player2_score = 0
+
+# Paddle speeds
+player1_speed = 5
+player2_speed = 5
+
+# Paddle sizes
+player1_height = paddle_height
+player2_height = paddle_height
+
+# Boost timers
+player1_boost_timer = 0
+player2_boost_timer = 0
+player1_size_timer = 0
+player2_size_timer = 0
+
+# Last hit tracker
+last_hit = None
+
+# Font
+font = pygame.font.Font(None, 74)
+
+# Clock
+clock = pygame.time.Clock()
+
+# Function to create a new blue box
+def create_blue_box():
+    x = random.randint(0, screen_width - box_size)
+    y = random.randint(0, screen_height - box_size)
+    blue_boxes.append(pygame.Rect(x, y, box_size, box_size))
+
+# Function to create a new red box
+def create_red_box():
+    x = random.randint(0, screen_width - box_size)
+    y = random.randint(0, screen_height - box_size)
+    red_boxes.append(pygame.Rect(x, y, box_size, box_size))
+
+# Function to create a new green box
+def create_green_box():
+    x = random.randint(0, screen_width - box_size)
+    y = random.randint(0, screen_height - box_size)
+    green_boxes.append(pygame.Rect(x, y, box_size, box_size))
+
+# Create initial boxes
+create_blue_box()
+create_red_box()
+create_green_box()
+
+# Main game loop
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Move left paddle (player 1)
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_w] and player1_y > 0:
+        player1_y -= player1_speed
+    if keys[pygame.K_s] and player1_y < screen_height - player1_height:
+        player1_y += player1_speed
+
+    # Move right paddle (player 2)
+    if keys[pygame.K_UP] and player2_y > 0:
+        player2_y -= player2_speed
+    if keys[pygame.K_DOWN] and player2_y < screen_height - player2_height:
+        player2_y += player2_speed
+
+    # Move ball
+    ball_x += ball_dx
+    ball_y += ball_dy
+
+    # Ball collision with top and bottom
+    if ball_y <= 0 or ball_y >= screen_height - ball_size:
+        ball_dy *= -1
+
+    # Ball collision with paddles
+    if (ball_x >= player2_x - ball_size and player2_y <= ball_y <= player2_y + player2_height):
+        ball_dx *= -1
+        last_hit = "player2"
+    elif (ball_x <= player1_x + paddle_width and player1_y <= ball_y <= player1_y + player1_height):
+        ball_dx *= -1
+        last_hit = "player1"
+
+    # Ball goes out of bounds
+    if ball_x <= 0:
+        player2_score += 1
+        ball_x = screen_width // 2
+        ball_y = screen_height // 2
+        ball_dx *= random.choice([-1, 1])
+        ball_dy *= random.choice([-1, 1])
+        last_hit = None
+    if ball_x >= screen_width - ball_size:
+        player1_score += 1
+        ball_x = screen_width // 2
+        ball_y = screen_height // 2
+        ball_dx *= random.choice([-1, 1])
+        ball_dy *= random.choice([-1, 1])
+        last_hit = None
+
+    # Ball collision with blue boxes
+    for box in blue_boxes[:]:
+        if box.colliderect(pygame.Rect(ball_x, ball_y, ball_size, ball_size)):
+            blue_boxes.remove(box)
+            ball_dx *= -1
+            ball_dy *= -1
+            if last_hit == "player1":
+                player1_speed += 2
+                player1_boost_timer = time.time()
+            elif last_hit == "player2":
+                player2_speed += 2
+                player2_boost_timer = time.time()
+
+    # Ball collision with red boxes
+    for box in red_boxes[:]:
+        if box.colliderect(pygame.Rect(ball_x, ball_y, ball_size, ball_size)):
+            red_boxes.remove(box)
+            ball_dx *= -1
+            ball_dy *= -1
+
+    # Ball collision with green boxes
+    for box in green_boxes[:]:
+        if box.colliderect(pygame.Rect(ball_x, ball_y, ball_size, ball_size)):
+            green_boxes.remove(box)
+            ball_dx *= -1
+            ball_dy *= -1
+            if last_hit == "player1":
+                player1_height += 60  # Change this value to adjust the size increase
+                player1_size_timer = time.time()
+            elif last_hit == "player2":
+                player2_height += 60  # Change this value to adjust the size increase
+                player2_size_timer = time.time()
+
+    # Check boost timers
+    if player1_boost_timer and time.time() - player1_boost_timer > 5:
+        player1_speed -= 2
+        player1_boost_timer = 0
+
+    if player2_boost_timer and time.time() - player2_boost_timer > 5:
+        player2_speed -= 2
+        player2_boost_timer = 0
+
+    # Check size timers
+    if player1_size_timer and time.time() - player1_size_timer > 5:
+        player1_height -= 60  # Change this value to match the size increase
+        player1_size_timer = 0
+
+    if player2_size_timer and time.time() - player2_size_timer > 5:
+        player2_height -= 60  # Change this value to match the size increase
+        player2_size_timer = 0
+
+    # Drawing
+    screen.fill(black)
+    pygame.draw.rect(screen, blue if player1_boost_timer else green if player1_size_timer else white, (player1_x, player1_y, paddle_width, player1_height))
+    pygame.draw.rect(screen, blue if player2_boost_timer else green if player2_size_timer else white, (player2_x, player2_y, paddle_width, player2_height))
+    pygame.draw.ellipse(screen, white, (ball_x, ball_y, ball_size, ball_size))
+
+    # Draw blue boxes
+    for box in blue_boxes:
+        pygame.draw.rect(screen, blue, box)
+
+    # Draw red boxes
+    for box in red_boxes:
+        pygame.draw.rect(screen, red, box)
+
+    # Draw green boxes
+    for box in green_boxes:
+        pygame.draw.rect(screen, green, box)
+
+    # Draw scores
+    player1_text = font.render(str(player1_score), True, white)
+    player2_text = font.render(str(player2_score), True, white)
+    screen.blit(player1_text, (screen_width // 2 - 60, 10))
+    screen.blit(player2_text, (screen_width // 2 + 20, 10))
+
+    # Update display
+    pygame.display.flip()
+    clock.tick(60)
+
+    # Occasionally create new boxes
+    if random.randint(0, 1000) < 2:  # Very rare chance to create a new blue box
+        create_blue_box()
+    if random.randint(0, 1000) < 2:  # Very rare chance to create a new red box
+        create_red_box()
+    if random.randint(0, 1000) < 2:  # Very rare chance to create a new green box
+        create_green_box()
+
+# Quit Pygame
+pygame.quit()
